@@ -1,140 +1,97 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
+import numpy as np
 import plotly.express as px
 
-# --- Page Config ---
-st.set_page_config(page_title="Air Quality Monitor", page_icon="🌤️", layout="wide")
+# ----------------------------
+# Page Configuration
+# ----------------------------
+st.set_page_config(page_title="Air Quality Monitoring Dashboard", layout="wide")
 
-# --- Header ---
-st.title("🌤️ Air Quality Monitoring Dashboard")
-st.markdown("""
-Upload your **Air Quality CSV file**.  
-Expected columns: **Date, Time, Temperature(°C), Humidity(%), CO2(ppm)**  
-""")
+# ----------------------------
+# Page Title
+# ----------------------------
+st.markdown(
+    "<h1 style='text-align:center; color:#00FFFF;'>📊 Air Quality Monitoring Model</h1>",
+    unsafe_allow_html=True,
+)
+st.markdown("<hr style='border: 1px solid #00FFFF;'>", unsafe_allow_html=True)
 
-# --- File Upload ---
-uploaded_file = st.file_uploader("📂 Upload CSV File", type=["csv"])
+# ----------------------------
+# Section Title
+# ----------------------------
+st.markdown(
+    "<h2 style='color:#FFD700;'>📈 Visualizations</h2>",
+    unsafe_allow_html=True,
+)
 
-if uploaded_file is not None:
-    try:
-        # Read CSV
-        df = pd.read_csv(uploaded_file)
-        df.columns = [col.strip().lower() for col in df.columns]
+# ----------------------------
+# Generate Sample Air Quality Data
+# ----------------------------
+np.random.seed(42)
+data = pd.DataFrame({
+    'x': np.random.randn(100),
+    'y': np.random.randn(100),
+    'PM2.5': np.random.uniform(10, 200, 100),
+    'category': np.random.choice(['A', 'B', 'C'], 100)
+})
 
-        # Check required columns
-        required_cols = ["date", "time", "temperature(°c)", "humidity(%)", "co2(ppm)"]
-        if not all(col in df.columns for col in required_cols):
-            st.error("❌ CSV must contain Date, Time, Temperature(°C), Humidity(%), and CO2(ppm).")
-            st.stop()
+# Clean data to avoid NaN errors
+data['PM2.5'] = data['PM2.5'].fillna(10).abs()
 
-        # Combine date & time
-        df["datetime"] = pd.to_datetime(df["date"] + " " + df["time"])
+# ----------------------------
+# Streamlit Scatter Chart
+# ----------------------------
+st.markdown(
+    "<h3 style='color:#90EE90;'>Streamlit Scatter Chart</h3>",
+    unsafe_allow_html=True,
+)
 
-        # Rename for simplicity
-        df.rename(columns={
-            "temperature(°c)": "temperature",
-            "humidity(%)": "humidity",
-            "co2(ppm)": "co2"
-        }, inplace=True)
+st.scatter_chart(
+    data,
+    x='x',
+    y='y',
+    color='category',
+)
 
-        # --- Data Preview ---
-        st.subheader("📄 Data Preview")
-        st.dataframe(df.head(10))
+# ----------------------------
+# Interactive Plotly Chart
+# ----------------------------
+st.markdown(
+    "<h3 style='color:#90EE90;'>Interactive Plotly Chart</h3>",
+    unsafe_allow_html=True,
+)
+st.markdown(
+    "<h4 style='color:#FFA07A;'>Interactive Scatter Plot with Plotly</h4>",
+    unsafe_allow_html=True,
+)
 
-        # --- Summary Statistics ---
-        st.subheader("📊 Summary Statistics")
-        st.write(df[["temperature", "humidity", "co2"]].describe())
+# Create Plotly Scatter
+fig = px.scatter(
+    data,
+    x='x',
+    y='y',
+    color='category',
+    size='PM2.5',
+    hover_data=['PM2.5'],
+    title="Interactive Scatter Plot with Plotly",
+)
 
-        # --- Trend Analysis ---
-        st.subheader("📈 Trend Analysis")
-        col1, col2 = st.columns(2)
+fig.update_layout(
+    template='plotly_dark',
+    title_font=dict(size=20, color='cyan'),
+    legend_title_text='Category',
+    margin=dict(l=20, r=20, t=50, b=20),
+)
 
-        # Temperature Chart
-        with col1:
-            st.write("🌡️ Temperature Over Time")
-            fig, ax = plt.subplots()
-            ax.plot(df["datetime"], df["temperature"], color="orange")
-            ax.set_xlabel("Time")
-            ax.set_ylabel("Temperature (°C)")
-            st.pyplot(fig)
+# Display interactive chart
+st.plotly_chart(fig, use_container_width=True)
 
-        # Humidity Chart
-        with col2:
-            st.write("💧 Humidity Over Time")
-            fig, ax = plt.subplots()
-            ax.plot(df["datetime"], df["humidity"], color="blue")
-            ax.set_xlabel("Time")
-            ax.set_ylabel("Humidity (%)")
-            st.pyplot(fig)
-
-        # CO₂ Chart
-        st.write("🌫️ CO₂ Levels Over Time")
-        fig, ax = plt.subplots()
-        ax.plot(df["datetime"], df["co2"], color="green")
-        ax.set_xlabel("Time")
-        ax.set_ylabel("CO₂ (ppm)")
-        st.pyplot(fig)
-
-        # --- Air Quality Status ---
-        st.subheader("🧮 Air Quality Status")
-        avg_co2 = df["co2"].mean()
-        st.metric("Average CO₂ (ppm)", f"{avg_co2:.2f}")
-
-        if avg_co2 < 800:
-            st.success("✅ Good Air Quality")
-        elif avg_co2 < 1200:
-            st.warning("⚠️ Moderate Air Quality — Ventilate the area")
-        else:
-            st.error("🚨 Poor Air Quality — High CO₂ levels detected!")
-
-        # --- VISUALIZATION SECTION ---
-        st.markdown("---")
-        st.header("📊 Visualizations")
-
-        # Scatter Chart using Streamlit built-in
-        st.subheader("🟢 Streamlit Scatter Chart")
-        st.write("This chart shows Temperature vs CO₂ colored by Humidity level.")
-        st.scatter_chart(
-            data=df,
-            x="temperature",
-            y="co2",
-            color="humidity"
-        )
-
-        # Interactive Plotly Chart
-        st.subheader("🔵 Interactive Plotly Chart")
-        st.write("Interactive Temperature vs Humidity chart with CO₂ as color intensity.")
-        fig_plotly = px.scatter(
-            df,
-            x="temperature",
-            y="humidity",
-            color="co2",
-            title="Interactive Plotly Chart - Air Quality",
-            labels={"temperature": "Temperature (°C)", "humidity": "Humidity (%)", "co2": "CO₂ (ppm)"},
-            hover_data=["datetime"]
-        )
-        st.plotly_chart(fig_plotly, use_container_width=True)
-
-        # Interactive Scatter Plot with Plotly (size by CO2)
-        st.subheader("🔴 Interactive Scatter Plot with Plotly")
-        st.write("Shows CO₂ level as bubble size for each reading.")
-        fig_scatter = px.scatter(
-            df,
-            x="temperature",
-            y="co2",
-            size="humidity",
-            color="humidity",
-            hover_name="datetime",
-            title="Temperature vs CO₂ with Humidity Bubble Size"
-        )
-        st.plotly_chart(fig_scatter, use_container_width=True)
-
-        # Download processed data
-        csv = df.to_csv(index=False).encode("utf-8")
-        st.download_button("⬇️ Download Processed CSV", csv, "processed_air_data.csv", "text/csv")
-
-    except Exception as e:
-        st.error(f"⚠️ Error reading file: {e}")
-else:
-    st.info("Please upload your CSV file to start the analysis.")
+# ----------------------------
+# Footer
+# ----------------------------
+st.markdown("<hr style='border: 1px solid #00FFFF;'>", unsafe_allow_html=True)
+st.markdown(
+    "<p style='text-align:center; color:gray;'>Developed by P.CH.P IOT Solution</p>",
+    unsafe_allow_html=True,
+)
