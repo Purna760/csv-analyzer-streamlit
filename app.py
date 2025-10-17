@@ -2,52 +2,80 @@ import streamlit as st
 import pandas as pd
 import matplotlib.pyplot as plt
 
-st.set_page_config(page_title="CSV Analyzer", layout="wide")
+# App Title
+st.set_page_config(page_title="Air Quality Monitor", page_icon="🌤️", layout="wide")
+st.title("🌤️ Air Quality Monitoring Data Analyzer")
 
-st.title("📊 CSV File Analyzer")
-st.write("Upload your CSV file to explore and visualize data interactively!")
+st.write("Upload your CSV file with columns: **Date, Time, Temperature (°C), Humidity (%), CO₂ (ppm)**")
 
-# File upload
-uploaded_file = st.file_uploader("📁 Upload a CSV file", type=["csv"])
+# Upload CSV
+uploaded_file = st.file_uploader("📂 Upload CSV File", type=["csv"])
 
 if uploaded_file is not None:
-    # Read file
-    df = pd.read_csv(uploaded_file)
+    try:
+        # Read CSV
+        df = pd.read_csv(uploaded_file)
 
-    st.subheader("📄 Data Preview")
-    st.dataframe(df.head())
+        # Rename columns if needed
+        df.columns = [col.strip().lower() for col in df.columns]
 
-    st.subheader("📈 Basic Information")
-    st.write(f"**Rows:** {df.shape[0]} | **Columns:** {df.shape[1]}")
+        # Combine Date + Time
+        if "date" in df.columns and "time" in df.columns:
+            df["datetime"] = pd.to_datetime(df["date"] + " " + df["time"])
+        else:
+            st.error("CSV must contain 'Date' and 'Time' columns.")
+            st.stop()
 
-    # Summary stats
-    st.subheader("📊 Summary Statistics")
-    st.write(df.describe())
+        # Display Data
+        st.subheader("📄 Uploaded Data Preview")
+        st.dataframe(df.head())
 
-    # Column selection for chart
-    st.subheader("📉 Visualizations")
-    columns = df.columns.tolist()
+        # Summary Statistics
+        st.subheader("📊 Summary Statistics")
+        st.write(df.describe())
 
-    x_axis = st.selectbox("Select X-axis", columns)
-    y_axis = st.selectbox("Select Y-axis", columns)
+        # Line charts
+        st.subheader("📈 Trend Graphs")
+        col1, col2 = st.columns(2)
 
-    chart_type = st.radio("Choose chart type", ["Line", "Bar", "Scatter", "Pie"])
+        with col1:
+            st.write("🌡️ Temperature Over Time")
+            fig, ax = plt.subplots()
+            ax.plot(df["datetime"], df["temperature"], color='orange')
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Temperature (°C)")
+            st.pyplot(fig)
 
-    if st.button("Generate Chart"):
-        st.write(f"### {chart_type} Chart: {y_axis} vs {x_axis}")
+        with col2:
+            st.write("💧 Humidity Over Time")
+            fig, ax = plt.subplots()
+            ax.plot(df["datetime"], df["humidity"], color='blue')
+            ax.set_xlabel("Time")
+            ax.set_ylabel("Humidity (%)")
+            st.pyplot(fig)
+
+        # CO2 plot
+        st.write("🌫️ CO₂ Levels Over Time")
         fig, ax = plt.subplots()
-
-        if chart_type == "Line":
-            ax.plot(df[x_axis], df[y_axis])
-        elif chart_type == "Bar":
-            ax.bar(df[x_axis], df[y_axis])
-        elif chart_type == "Scatter":
-            ax.scatter(df[x_axis], df[y_axis])
-        elif chart_type == "Pie":
-            df.groupby(x_axis)[y_axis].sum().plot.pie(autopct='%1.1f%%', ax=ax)
-            ax.set_ylabel("")
-
+        ax.plot(df["datetime"], df["co2"], color='green')
+        ax.set_xlabel("Time")
+        ax.set_ylabel("CO₂ (ppm)")
         st.pyplot(fig)
 
+        # Air Quality Analysis
+        st.subheader("🧮 Air Quality Analysis")
+
+        avg_co2 = df["co2"].mean()
+        st.metric("Average CO₂ (ppm)", f"{avg_co2:.2f}")
+
+        if avg_co2 < 800:
+            st.success("✅ Good Air Quality")
+        elif avg_co2 < 1200:
+            st.warning("⚠️ Moderate Air Quality — Consider ventilation")
+        else:
+            st.error("🚨 Poor Air Quality — High CO₂ levels detected!")
+
+    except Exception as e:
+        st.error(f"Error reading file: {e}")
 else:
-    st.info("👆 Upload a CSV file to start analyzing.")
+    st.info("Please upload a CSV file to begin analysis.")
